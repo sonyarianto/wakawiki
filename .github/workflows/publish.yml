@@ -29,16 +29,16 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            binary: wikigen-linux-x64
+            binary: wakawiki-linux-x64
           - target: x86_64-apple-darwin
             os: macos-latest
-            binary: wikigen-macos-x64
+            binary: wakawiki-macos-x64
           - target: aarch64-apple-darwin
             os: macos-latest
-            binary: wikigen-macos-arm64
+            binary: wakawiki-macos-arm64
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            binary: wikigen-windows-x64.exe
+            binary: wakawiki-windows-x64.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -51,9 +51,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cp target/${{ matrix.target }}/release/wikigen.exe "${{ matrix.binary }}"
+            cp target/${{ matrix.target }}/release/wakawiki.exe "${{ matrix.binary }}"
           else
-            cp target/${{ matrix.target }}/release/wikigen "${{ matrix.binary }}"
+            cp target/${{ matrix.target }}/release/wakawiki "${{ matrix.binary }}"
           fi
       - name: Upload binary
         uses: actions/upload-artifact@v4
@@ -69,12 +69,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: wikigen-*
+          pattern: wakawiki-*
           merge-multiple: true
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "wikigen-*"
+          artifacts: "wakawiki-*"
           generateReleaseNotes: true
 
   npm-publish:

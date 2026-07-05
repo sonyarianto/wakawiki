@@ -8,8 +8,8 @@ pub struct WikiMeta {
     pub file_hashes: HashMap<String, String>,
 }
 
-pub fn load_wiki_meta(wikigen_dir: &Path) -> WikiMeta {
-    let meta_path = wikigen_dir.join(".wikigen.json");
+pub fn load_wiki_meta(wakawiki_dir: &Path) -> WikiMeta {
+    let meta_path = wakawiki_dir.join(".wakawiki.json");
     match std::fs::read_to_string(&meta_path) {
         Ok(content) => match serde_json::from_str(&content) {
             Ok(meta) => meta,
@@ -23,15 +23,15 @@ pub fn load_wiki_meta(wikigen_dir: &Path) -> WikiMeta {
     }
 }
 
-pub fn save_wiki_meta(wikigen_dir: &Path, meta: &WikiMeta) {
-    let meta_path = wikigen_dir.join(".wikigen.json");
+pub fn save_wiki_meta(wakawiki_dir: &Path, meta: &WikiMeta) {
+    let meta_path = wakawiki_dir.join(".wakawiki.json");
     if let Ok(json) = serde_json::to_string_pretty(meta) {
         let _ = std::fs::write(meta_path, json);
     }
 }
 
-pub fn write_doc(wikigen_dir: &Path, relative_path: &str, content: &str) -> PathBuf {
-    let full_path = wikigen_dir.join(relative_path);
+pub fn write_doc(wakawiki_dir: &Path, relative_path: &str, content: &str) -> PathBuf {
+    let full_path = wakawiki_dir.join(relative_path);
     if let Some(parent) = full_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
@@ -41,7 +41,7 @@ pub fn write_doc(wikigen_dir: &Path, relative_path: &str, content: &str) -> Path
 
 pub fn append_agents_reference(project_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let agents_path = project_dir.join("AGENTS.md");
-    let reference = "\n\n<!-- wikigen:start -->\n## wikigen Documentation\n\nThis repository has wikigen-generated documentation in the `wikigen/` directory.\nWhen you need context about the codebase, reference the files in `wikigen/`:\n- `wikigen/index.md` — Project overview\n- `wikigen/architecture.md` — Architecture and design\n\nYou can also use the wikigen CLI to update documentation:\n```bash\nwikigen --update\n```\n<!-- wikigen:end -->\n";
+    let reference = "\n\n<!-- wakawiki:start -->\n## wakawiki Documentation\n\nThis repository has wakawiki-generated documentation in the `wakawiki/` directory.\nWhen you need context about the codebase, reference the files in `wakawiki/`:\n- `wakawiki/index.md` — Project overview\n- `wakawiki/architecture.md` — Architecture and design\n\nYou can also use the wakawiki CLI to update documentation:\n```bash\nwakawiki --update\n```\n<!-- wakawiki:end -->\n";
 
     let existing = if agents_path.exists() {
         std::fs::read_to_string(&agents_path).unwrap_or_default()
@@ -49,8 +49,8 @@ pub fn append_agents_reference(project_dir: &Path) -> Result<(), Box<dyn std::er
         String::new()
     };
 
-    let start_marker = "<!-- wikigen:start -->";
-    let end_marker = "<!-- wikigen:end -->";
+    let start_marker = "<!-- wakawiki:start -->";
+    let end_marker = "<!-- wakawiki:end -->";
 
     let new_content = if let (Some(start), Some(end)) =
         (existing.find(start_marker), existing.find(end_marker))
@@ -63,7 +63,7 @@ pub fn append_agents_reference(project_dir: &Path) -> Result<(), Box<dyn std::er
         )
     } else {
         format!(
-            "{}<!-- wikigen:start -->\n## wikigen Documentation\n\nThis repository has wikigen-generated documentation in the `wikigen/` directory.\nWhen you need context about the codebase, reference the files in `wikigen/`:\n- `wikigen/index.md` — Project overview\n- `wikigen/architecture.md` — Architecture and design\n\nYou can also use the wikigen CLI to update documentation:\n```bash\nwikigen --update\n```\n<!-- wikigen:end -->\n",
+            "{}<!-- wakawiki:start -->\n## wakawiki Documentation\n\nThis repository has wakawiki-generated documentation in the `wakawiki/` directory.\nWhen you need context about the codebase, reference the files in `wakawiki/`:\n- `wakawiki/index.md` — Project overview\n- `wakawiki/architecture.md` — Architecture and design\n\nYou can also use the wakawiki CLI to update documentation:\n```bash\nwakawiki --update\n```\n<!-- wakawiki:end -->\n",
             existing
         )
     };
@@ -136,8 +136,8 @@ mod tests {
         let (dir, cleanup) = temp_dir();
         append_agents_reference(&dir).unwrap();
         let content = std::fs::read_to_string(dir.join("AGENTS.md")).unwrap();
-        assert!(content.contains("wikigen:start"));
-        assert!(content.contains("wikigen --update"));
+        assert!(content.contains("wakawiki:start"));
+        assert!(content.contains("wakawiki --update"));
         cleanup();
     }
 
@@ -147,7 +147,7 @@ mod tests {
         append_agents_reference(&dir).unwrap();
         append_agents_reference(&dir).unwrap();
         let content = std::fs::read_to_string(dir.join("AGENTS.md")).unwrap();
-        let count = content.matches("wikigen:start").count();
+        let count = content.matches("wakawiki:start").count();
         assert_eq!(count, 1);
         cleanup();
     }
@@ -159,7 +159,7 @@ mod tests {
         append_agents_reference(&dir).unwrap();
         let content = std::fs::read_to_string(dir.join("AGENTS.md")).unwrap();
         assert!(content.contains("# My Project"));
-        assert!(content.contains("wikigen:start"));
+        assert!(content.contains("wakawiki:start"));
         cleanup();
     }
 }

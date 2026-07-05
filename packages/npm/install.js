@@ -12,10 +12,10 @@ function getBinaryName() {
   const arch = os.arch();
 
   const map = {
-    "linux-x64": "wikigen-linux-x64",
-    "darwin-x64": "wikigen-macos-x64",
-    "darwin-arm64": "wikigen-macos-arm64",
-    "win32-x64": "wikigen-windows-x64.exe",
+    "linux-x64": "wakawiki-linux-x64",
+    "darwin-x64": "wakawiki-macos-x64",
+    "darwin-arm64": "wakawiki-macos-arm64",
+    "win32-x64": "wakawiki-windows-x64.exe",
   };
 
   const key = `${platform}-${arch}`;
@@ -57,19 +57,19 @@ function download(url, dest) {
 
 async function main() {
   const binaryName = getBinaryName();
-  const dest = path.join(BIN_DIR, os.platform() === "win32" ? "wikigen.exe" : "wikigen");
-  const url = `https://github.com/sonyarianto/wikigen/releases/download/v${VERSION}/${binaryName}`;
+  const dest = path.join(BIN_DIR, os.platform() === "win32" ? "wakawiki.exe" : "wakawiki");
+  const url = `https://github.com/sonyarianto/wakawiki/releases/download/v${VERSION}/${binaryName}`;
 
   if (!fs.existsSync(BIN_DIR)) {
     fs.mkdirSync(BIN_DIR, { recursive: true });
   }
 
-  console.log(`Downloading wikigen v${VERSION} for ${os.platform()}-${os.arch()}...`);
+  console.log(`Downloading wakawiki v${VERSION} for ${os.platform()}-${os.arch()}...`);
 
   try {
     await download(url, dest);
     fs.chmodSync(dest, "755");
-    console.log("wikigen installed successfully");
+    console.log("wakawiki installed successfully");
   } catch (e) {
     console.error(`Failed to download binary: ${e.message}`);
     console.error(`URL: ${url}`);

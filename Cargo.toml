@@ -1,15 +1,15 @@
 [package]
-name = "wikigen"
+name = "wakawiki"
 version = "0.1.2"
 edition = "2021"
 description = "A CLI that writes and maintains agent documentation for your codebase"
 license = "MIT"
-repository = "https://github.com/sonyarianto/wikigen"
+repository = "https://github.com/sonyarianto/wakawiki"
 keywords = ["documentation", "cli", "llm", "agent", "codebase"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
-name = "wikigen"
+name = "wakawiki"
 path = "src/main.rs"
 
 [dependencies]

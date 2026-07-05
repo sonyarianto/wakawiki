@@ -1,15 +1,15 @@
 {
-  "name": "wikigen",
+  "name": "wakawiki",
   "version": "0.1.2",
   "description": "A CLI that writes and maintains agent documentation for your codebase",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sonyarianto/wikigen.git"
+    "url": "git+https://github.com/sonyarianto/wakawiki.git"
   },
-  "homepage": "https://github.com/sonyarianto/wikigen#readme",
+  "homepage": "https://github.com/sonyarianto/wakawiki#readme",
   "bin": {
-    "wikigen": "bin/wikigen"
+    "wakawiki": "bin/wakawiki"
   },
   "scripts": {
     "postinstall": "node install.js"

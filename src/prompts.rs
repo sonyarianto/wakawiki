@@ -1,10 +1,10 @@
-pub const SYSTEM_PROMPT: &str = r#"You are wikigen, an expert technical documentation writer. Your job is to generate clear, accurate, and well-structured documentation for a codebase.
+pub const SYSTEM_PROMPT: &str = r#"You are wakawiki, an expert technical documentation writer. Your job is to generate clear, accurate, and well-structured documentation for a codebase.
 
 You have access to tools to explore the codebase:
 - `list_files(path)` — list files and directories at the given path. Use "" for root.
 - `read_file(path)` — read the full contents of a file.
 - `search(pattern)` — search the entire codebase for a pattern and return matching lines with file paths and line numbers.
-- `write_doc(relative_path, content)` — write a documentation file into the wikigen/ output directory.
+- `write_doc(relative_path, content)` — write a documentation file into the wakawiki/ output directory.
 
 ## How to produce documentation
 

@@ -53,13 +53,13 @@ fn tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "write_doc".into(),
-            description: "Write a documentation file into the wikigen/ output directory. Use this to create or update documentation. Do NOT write outside wikigen/.".into(),
+            description: "Write a documentation file into the wakawiki/ output directory. Use this to create or update documentation. Do NOT write outside wakawiki/.".into(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Relative path within wikigen/ to write to (e.g. 'index.md', 'architecture.md')."
+                        "description": "Relative path within wakawiki/ to write to (e.g. 'index.md', 'architecture.md')."
                     },
                     "content": {
                         "type": "string",
@@ -75,7 +75,7 @@ fn tool_definitions() -> Vec<ToolDef> {
 fn execute_tool(
     tool: &ToolCall,
     project_dir: &Path,
-    wikigen_dir: &Path,
+    wakawiki_dir: &Path,
     wiki_meta: &mut WikiMeta,
 ) -> String {
     match tool.name.as_str() {
@@ -178,12 +178,12 @@ fn execute_tool(
                 return "Error: no path provided".into();
             }
 
-            let full_path = output::write_doc(wikigen_dir, path, content);
+            let full_path = output::write_doc(wakawiki_dir, path, content);
             if let Ok(hash) = scanner::compute_file_hash(&full_path) {
                 wiki_meta.file_hashes.insert(path.to_string(), hash);
             }
             format!(
-                "Documentation written: wikigen/{} ({} bytes)",
+                "Documentation written: wakawiki/{} ({} bytes)",
                 path,
                 content.len()
             )
@@ -198,10 +198,10 @@ pub async fn run_interactive(
     _cfg: &Config,
     initial_prompt: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let wikigen_dir = project_dir.join("wikigen");
-    std::fs::create_dir_all(&wikigen_dir)?;
+    let wakawiki_dir = project_dir.join("wakawiki");
+    std::fs::create_dir_all(&wakawiki_dir)?;
 
-    let mut wiki_meta = output::load_wiki_meta(&wikigen_dir);
+    let mut wiki_meta = output::load_wiki_meta(&wakawiki_dir);
     let tools = tool_definitions();
 
     let mut messages: Vec<ChatMessage> = vec![
@@ -244,7 +244,7 @@ pub async fn run_interactive(
             for tc in &tool_calls {
                 println!("  -> {}", tc.name);
 
-                let result = execute_tool(tc, project_dir, &wikigen_dir, &mut wiki_meta);
+                let result = execute_tool(tc, project_dir, &wakawiki_dir, &mut wiki_meta);
 
                 messages.push(ChatMessage {
                     role: "tool".into(),
@@ -304,11 +304,11 @@ pub async fn run_interactive(
         }
     }
 
-    output::save_wiki_meta(&wikigen_dir, &wiki_meta);
+    output::save_wiki_meta(&wakawiki_dir, &wiki_meta);
 
     let _ = output::append_agents_reference(project_dir);
 
-    println!("\nDocumentation written to wikigen/");
+    println!("\nDocumentation written to wakawiki/");
     Ok(())
 }
 
@@ -318,10 +318,10 @@ pub async fn run_oneshot(
     _cfg: &Config,
     prompt: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let wikigen_dir = project_dir.join("wikigen");
-    std::fs::create_dir_all(&wikigen_dir)?;
+    let wakawiki_dir = project_dir.join("wakawiki");
+    std::fs::create_dir_all(&wakawiki_dir)?;
 
-    let mut wiki_meta = output::load_wiki_meta(&wikigen_dir);
+    let mut wiki_meta = output::load_wiki_meta(&wakawiki_dir);
     let tools = tool_definitions();
 
     let mut messages: Vec<ChatMessage> = vec![
@@ -354,7 +354,7 @@ pub async fn run_oneshot(
             });
 
             for tc in &tool_calls {
-                let result = execute_tool(tc, project_dir, &wikigen_dir, &mut wiki_meta);
+                let result = execute_tool(tc, project_dir, &wakawiki_dir, &mut wiki_meta);
                 messages.push(ChatMessage {
                     role: "tool".into(),
                     content: result,
@@ -380,7 +380,7 @@ pub async fn run_oneshot(
 
 pub async fn update_docs(
     project_dir: &Path,
-    wikigen_dir: &Path,
+    wakawiki_dir: &Path,
     wiki_meta: &mut WikiMeta,
     provider: &LlmProvider,
     _cfg: &Config,
@@ -394,7 +394,7 @@ pub async fn update_docs(
         },
         ChatMessage {
             role: "user".into(),
-            content: "The wikigen/ directory already has existing documentation. Please review the codebase for any changes since the docs were last generated, and update the documentation files with write_doc to reflect the current state of the codebase. Focus on what changed.".into(),
+            content: "The wakawiki/ directory already has existing documentation. Please review the codebase for any changes since the docs were last generated, and update the documentation files with write_doc to reflect the current state of the codebase. Focus on what changed.".into(),
         },
     ];
 
@@ -418,7 +418,7 @@ pub async fn update_docs(
             });
 
             for tc in &tool_calls {
-                let result = execute_tool(tc, project_dir, wikigen_dir, wiki_meta);
+                let result = execute_tool(tc, project_dir, wakawiki_dir, wiki_meta);
                 messages.push(ChatMessage {
                     role: "tool".into(),
                     content: result,
@@ -480,11 +480,11 @@ mod tests {
         std::fs::write(proj.join("a.rs"), "fn main() {}").unwrap();
         std::fs::write(proj.join("README.md"), "# Project").unwrap();
 
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("list_files", r#"{"path":""}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("a.rs"));
         assert!(result.contains("README.md"));
         cleanup();
@@ -496,11 +496,11 @@ mod tests {
         std::fs::create_dir_all(proj.join("sub")).unwrap();
         std::fs::write(proj.join("sub/b.rs"), "fn bar() {}").unwrap();
 
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("list_files", r#"{"path":"sub"}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("b.rs"));
         cleanup();
     }
@@ -508,11 +508,11 @@ mod tests {
     #[test]
     fn execute_list_files_nonexistent_path() {
         let (proj, cleanup) = temp_project();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("list_files", r#"{"path":"noexist"}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("Error"));
         cleanup();
     }
@@ -521,11 +521,11 @@ mod tests {
     fn execute_read_file_returns_content() {
         let (proj, cleanup) = temp_project();
         std::fs::write(proj.join("hello.txt"), "hello world\n").unwrap();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("read_file", r#"{"path":"hello.txt"}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("hello world"));
         cleanup();
     }
@@ -533,11 +533,11 @@ mod tests {
     #[test]
     fn execute_read_file_empty_path() {
         let (proj, cleanup) = temp_project();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("read_file", r#"{"path":""}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("Error"));
         cleanup();
     }
@@ -546,11 +546,11 @@ mod tests {
     fn execute_search_finds_pattern() {
         let (proj, cleanup) = temp_project();
         std::fs::write(proj.join("src.rs"), "fn search_me() {\n    do_thing();\n}").unwrap();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("search", r#"{"pattern":"search_me"}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("search_me"));
         cleanup();
     }
@@ -559,11 +559,11 @@ mod tests {
     fn execute_search_no_match() {
         let (proj, cleanup) = temp_project();
         std::fs::write(proj.join("src.rs"), "fn x() {}").unwrap();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("search", r#"{"pattern":"nonexistent"}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("No matches"));
         cleanup();
     }
@@ -571,17 +571,17 @@ mod tests {
     #[test]
     fn execute_write_doc_creates_file() {
         let (proj, cleanup) = temp_project();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call(
             "write_doc",
             r##"{"path":"test.md","content":"# Test Doc"}"##,
         );
         let mut meta = empty_meta();
-        let result = execute_tool(&tc, &proj, &wikigen, &mut meta);
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut meta);
         assert!(result.contains("Documentation written"));
-        assert!(wikigen.join("test.md").exists());
+        assert!(wakawiki.join("test.md").exists());
         assert!(meta.file_hashes.contains_key("test.md"));
         cleanup();
     }
@@ -589,11 +589,11 @@ mod tests {
     #[test]
     fn execute_write_doc_empty_path() {
         let (proj, cleanup) = temp_project();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("write_doc", r#"{"path":"","content":"x"}"#);
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("Error"));
         cleanup();
     }
@@ -601,11 +601,11 @@ mod tests {
     #[test]
     fn execute_unknown_tool() {
         let (proj, cleanup) = temp_project();
-        let wikigen = proj.join("wikigen");
-        std::fs::create_dir_all(&wikigen).unwrap();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
 
         let tc = make_tool_call("nonexistent_tool", "{}");
-        let result = execute_tool(&tc, &proj, &wikigen, &mut empty_meta());
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("Unknown tool"));
         cleanup();
     }
