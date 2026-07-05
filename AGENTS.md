@@ -12,5 +12,6 @@ Before committing the release:
 - Run `cargo clippy -- -D warnings`
 - Run `cargo test`
 - Ensure no unstaged changes in `Cargo.lock`
+- Update `CHANGELOG.md` with the new version's changes
 
 Tag format: `v{version}` (e.g. `v0.1.4`)
