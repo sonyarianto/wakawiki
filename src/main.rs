@@ -2,11 +2,14 @@ use clap::Parser;
 
 mod agent;
 mod config;
+mod index;
+mod mcp;
 mod output;
 mod prompts;
 mod provider;
 mod scan;
 mod scanner;
+mod vector;
 
 #[derive(Parser)]
 #[command(
@@ -30,6 +33,26 @@ struct Cli {
     /// Scan-only mode: generate documentation using heuristics (no LLM)
     #[arg(long)]
     scan: bool,
+
+    /// Build structured JSON index of all symbols and files
+    #[arg(long)]
+    index: bool,
+
+    /// Generate embeddings for semantic search
+    #[arg(long)]
+    embed: bool,
+
+    /// Query the index for symbols or files matching a pattern
+    #[arg(short = 'q', long = "query")]
+    query: Option<String>,
+
+    /// Semantic search query (requires embeddings)
+    #[arg(short = 's', long = "semantic")]
+    semantic: Option<String>,
+
+    /// Start MCP server (use with --mcp for MCP protocol over stdio)
+    #[arg(long)]
+    serve: bool,
 
     /// Initial prompt to start with (otherwise enters interactive mode)
     prompt: Option<String>,
@@ -56,6 +79,89 @@ async fn main() {
     if cli.scan {
         if let Err(e) = scan::run(&project_dir) {
             eprintln!("Scan failed: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    if cli.index {
+        match index::build_index(&project_dir) {
+            Ok(code_index) => {
+                match index::save_index(&project_dir, &code_index) {
+                    Ok(path) => {
+                        println!("Index saved to {path}");
+                        println!("  Files: {}", code_index.files.len());
+                        println!("  Symbols: {}", code_index.symbols.len());
+                    }
+                    Err(e) => {
+                        eprintln!("Error saving index: {e}");
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Index build failed: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if cli.embed {
+        let code_index = match index::load_index(&project_dir) {
+            Ok(idx) => idx,
+            Err(_) => {
+                eprintln!("No index found. Run 'wakawiki --index' first.");
+                std::process::exit(1);
+            }
+        };
+
+        let mut store = vector::VectorStore::new();
+        store.build_from_index(&code_index);
+
+        match store.save(&project_dir) {
+            Ok(path) => {
+                println!("Embeddings saved to {path}");
+                println!("  Vectors: {}", store.embeddings.len());
+            }
+            Err(e) => {
+                eprintln!("Error saving embeddings: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if let Some(pattern) = cli.query {
+        let code_index = match index::load_index(&project_dir) {
+            Ok(idx) => idx,
+            Err(_) => {
+                eprintln!("No index found. Run 'wakawiki --index' first.");
+                std::process::exit(1);
+            }
+        };
+        let result = index::query_index(&code_index, &pattern);
+        print!("{}", index::format_query_result(&result, &pattern));
+        return;
+    }
+
+    if let Some(query) = cli.semantic {
+        let store = match vector::VectorStore::load(&project_dir) {
+            Ok(s) => s,
+            Err(_) => {
+                eprintln!("No embeddings found. Run 'wakawiki --embed' first.");
+                std::process::exit(1);
+            }
+        };
+
+        let results = store.search(&query, 10);
+        print!("{}", vector::format_semantic_results(&results));
+        return;
+    }
+
+    if cli.serve {
+        if let Err(e) = mcp::run_server(&project_dir) {
+            eprintln!("MCP server error: {e}");
             std::process::exit(1);
         }
         return;
