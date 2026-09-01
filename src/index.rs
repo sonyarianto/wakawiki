@@ -100,9 +100,7 @@ fn read_project_metadata(project_dir: &Path) -> (String, String, String) {
     (name, version, description)
 }
 
-fn collect_index_entries(
-    project_dir: &Path,
-) -> Result<Vec<FileEntry>, Box<dyn std::error::Error>> {
+fn collect_index_entries(project_dir: &Path) -> Result<Vec<FileEntry>, Box<dyn std::error::Error>> {
     let scanner_entries = scanner::scan_project(project_dir)?;
     let mut entries = Vec::new();
 
@@ -417,7 +415,10 @@ pub fn format_query_result(result: &QueryResult, pattern: &str) -> String {
     output
 }
 
-pub fn save_index(project_dir: &Path, index: &CodeIndex) -> Result<String, Box<dyn std::error::Error>> {
+pub fn save_index(
+    project_dir: &Path,
+    index: &CodeIndex,
+) -> Result<String, Box<dyn std::error::Error>> {
     let wakawiki_dir = project_dir.join("wakawiki");
     std::fs::create_dir_all(&wakawiki_dir)?;
 
@@ -476,7 +477,10 @@ mod tests {
 
     #[test]
     fn extract_symbol_name_works() {
-        assert_eq!(extract_symbol_name("greet(name: &str)"), Some("greet".into()));
+        assert_eq!(
+            extract_symbol_name("greet(name: &str)"),
+            Some("greet".into())
+        );
         assert_eq!(extract_symbol_name("Config {"), Some("Config".into()));
         assert_eq!(extract_symbol_name("Result<T, E>"), Some("Result".into()));
     }

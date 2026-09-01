@@ -150,7 +150,9 @@ fn handle_tools_list(request: &JsonRpcRequest, has_embeddings: bool) -> JsonRpcR
     let mut tools = vec![
         ToolInfo {
             name: "query_symbols".into(),
-            description: "Search for symbols (functions, structs, enums, etc.) by name, kind, or file path".into(),
+            description:
+                "Search for symbols (functions, structs, enums, etc.) by name, kind, or file path"
+                    .into(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -195,7 +197,8 @@ fn handle_tools_list(request: &JsonRpcRequest, has_embeddings: bool) -> JsonRpcR
         },
         ToolInfo {
             name: "get_file_info".into(),
-            description: "Get detailed information about a specific file including its symbols".into(),
+            description: "Get detailed information about a specific file including its symbols"
+                .into(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -282,9 +285,7 @@ fn handle_tools_call(
             let symbols: Vec<_> = index
                 .symbols
                 .iter()
-                .filter(|s| {
-                    s.name == name && file.map(|f| s.file == f).unwrap_or(true)
-                })
+                .filter(|s| s.name == name && file.map(|f| s.file == f).unwrap_or(true))
                 .collect();
 
             if symbols.is_empty() {
@@ -309,7 +310,10 @@ fn handle_tools_call(
                             .as_ref()
                             .map(|s| format!("\nSignature: {}", s))
                             .unwrap_or_default();
-                        format!("{} {} in {}:{}{}{}", s.kind, s.name, s.file, s.line, sig, doc)
+                        format!(
+                            "{} {} in {}:{}{}{}",
+                            s.kind, s.name, s.file, s.line, sig, doc
+                        )
                     })
                     .collect::<Vec<_>>()
                     .join("\n\n");
@@ -336,7 +340,12 @@ fn handle_tools_call(
                 .iter()
                 .map(|f| {
                     let kb = f.size / 1024;
-                    format!("{} [{}] ({} KB)", f.path, f.language, if kb == 0 { 1 } else { kb })
+                    format!(
+                        "{} [{}] ({} KB)",
+                        f.path,
+                        f.language,
+                        if kb == 0 { 1 } else { kb }
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -358,14 +367,12 @@ fn handle_tools_call(
 
             match file {
                 Some(f) => {
-                    let symbols: Vec<_> = index
-                        .symbols
-                        .iter()
-                        .filter(|s| s.file == path)
-                        .collect();
+                    let symbols: Vec<_> = index.symbols.iter().filter(|s| s.file == path).collect();
 
-                    let mut text = format!("File: {}\nLanguage: {}\nSize: {} bytes\nHash: {}",
-                        f.path, f.language, f.size, f.hash);
+                    let mut text = format!(
+                        "File: {}\nLanguage: {}\nSize: {} bytes\nHash: {}",
+                        f.path, f.language, f.size, f.hash
+                    );
 
                     if !symbols.is_empty() {
                         text.push_str("\n\nSymbols:");
@@ -401,37 +408,35 @@ fn handle_tools_call(
                     index.symbols.len())
             }]
         })),
-        Some("semantic_search") => {
-            match vector_store {
-                Some(store) => {
-                    let query = arguments
-                        .and_then(|a| a.get("query"))
-                        .and_then(|q| q.as_str())
-                        .unwrap_or("");
-                    let top_k = arguments
-                        .and_then(|a| a.get("top_k"))
-                        .and_then(|k| k.as_u64())
-                        .unwrap_or(10) as usize;
+        Some("semantic_search") => match vector_store {
+            Some(store) => {
+                let query = arguments
+                    .and_then(|a| a.get("query"))
+                    .and_then(|q| q.as_str())
+                    .unwrap_or("");
+                let top_k = arguments
+                    .and_then(|a| a.get("top_k"))
+                    .and_then(|k| k.as_u64())
+                    .unwrap_or(10) as usize;
 
-                    let results = store.search(query, top_k);
-                    let text = vector::format_semantic_results(&results);
+                let results = store.search(query, top_k);
+                let text = vector::format_semantic_results(&results);
 
-                    Ok(serde_json::json!({
-                        "content": [{
-                            "type": "text",
-                            "text": text
-                        }]
-                    }))
-                }
-                None => Ok(serde_json::json!({
+                Ok(serde_json::json!({
                     "content": [{
                         "type": "text",
-                        "text": "Semantic search not available. Run 'wakawiki --embed' first.".to_string()
-                    }],
-                    "isError": true
-                })),
+                        "text": text
+                    }]
+                }))
             }
-        }
+            None => Ok(serde_json::json!({
+                "content": [{
+                    "type": "text",
+                    "text": "Semantic search not available. Run 'wakawiki --embed' first.".to_string()
+                }],
+                "isError": true
+            })),
+        },
         Some(name) => Err(JsonRpcError {
             code: -32602,
             message: format!("Unknown tool: {name}"),

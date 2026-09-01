@@ -86,19 +86,17 @@ async fn main() {
 
     if cli.index {
         match index::build_index(&project_dir) {
-            Ok(code_index) => {
-                match index::save_index(&project_dir, &code_index) {
-                    Ok(path) => {
-                        println!("Index saved to {path}");
-                        println!("  Files: {}", code_index.files.len());
-                        println!("  Symbols: {}", code_index.symbols.len());
-                    }
-                    Err(e) => {
-                        eprintln!("Error saving index: {e}");
-                        std::process::exit(1);
-                    }
+            Ok(code_index) => match index::save_index(&project_dir, &code_index) {
+                Ok(path) => {
+                    println!("Index saved to {path}");
+                    println!("  Files: {}", code_index.files.len());
+                    println!("  Symbols: {}", code_index.symbols.len());
                 }
-            }
+                Err(e) => {
+                    eprintln!("Error saving index: {e}");
+                    std::process::exit(1);
+                }
+            },
             Err(e) => {
                 eprintln!("Index build failed: {e}");
                 std::process::exit(1);
