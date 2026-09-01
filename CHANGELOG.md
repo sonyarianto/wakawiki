@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2026-09-01
+
+### Added
+- `--index` flag: builds structured JSON index of all symbols and files (`wakawiki/index.json`)
+- `--embed` flag: generates TF-IDF embeddings for semantic search (`wakawiki/embeddings.json`)
+- `-q`, `--query` option: text-based search on the index by symbol name, kind, or file path
+- `-s`, `--semantic` option: vector-based semantic search using cosine similarity
+- `--serve` flag: starts MCP server (JSON-RPC 2.0 over stdio) with 6 tools
+  - `query_symbols` — search by pattern
+  - `get_symbol` — lookup by name
+  - `list_files` — list all indexed files
+  - `get_file_info` — file details + symbols
+  - `get_project_info` — project metadata
+  - `semantic_search` — vector-based search (requires `--embed`)
+
+### New Modules
+- `src/index.rs`: JSON index builder and query engine
+- `src/mcp.rs`: MCP server implementation
+- `src/vector.rs`: TF-IDF embeddings and cosine similarity search
+
+### Changed
+- Added `wakawiki/` to `.gitignore` (generated output)
+- Updated README and docs with new CLI options
+- Test suite expanded from 56 to 66 tests
+
 ## [0.1.7] - 2026-07-05
 
 ### Fixed

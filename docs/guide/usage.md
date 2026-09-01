@@ -27,6 +27,11 @@ wakawiki [OPTIONS] [PROMPT]
 | `--init` | Interactive setup: choose provider, set API key, pick model |
 | `-p`, `--print` | Non-interactive one-shot mode (CI-friendly) |
 | `--scan` | Heuristic scan (no LLM) — fast, deterministic docs |
+| `--index` | Build structured JSON index of all symbols and files |
+| `--embed` | Generate embeddings for semantic search |
+| `-q`, `--query` | Query the index for symbols or files matching a pattern |
+| `-s`, `--semantic` | Semantic search query (requires embeddings) |
+| `--serve` | Start MCP server (JSON-RPC 2.0 over stdio) |
 | `--update` | Refresh existing `wakawiki/` docs with incremental diff |
 | `-h`, `--help` | Show help |
 | `--version` | Print version and exit |
@@ -72,3 +77,54 @@ The scan mode:
 - Generates `index.md` (dependencies, directory tree) and `architecture.md` (API reference)
 - Respects your `.gitignore` for file filtering
 - Runs in milliseconds
+
+## Code Indexing
+
+Build a structured JSON index of all symbols and files in your project.
+
+```bash
+wakawiki --index
+```
+
+Output: `wakawiki/index.json` containing:
+- Project metadata (name, version, description)
+- All files with paths, sizes, hashes, and language
+- All public symbols (fn, struct, enum, trait, etc.) with line numbers and docs
+
+## Query Index
+
+Search the index by symbol name, kind, or file path.
+
+```bash
+wakawiki -q "Config"        # search by name
+wakawiki -q "fn"            # search by kind
+wakawiki -q "provider"      # search by path
+```
+
+## Semantic Search
+
+Generate embeddings and perform semantic search.
+
+```bash
+wakawiki --embed             # generate embeddings first
+wakawiki -s "configuration"  # semantic search
+```
+
+Uses TF-IDF vectorization — no external API required.
+
+## MCP Server
+
+Start an MCP (Model Context Protocol) server that exposes your codebase to AI agents.
+
+```bash
+wakawiki --index             # build index first
+wakawiki --serve             # start MCP server on stdio
+```
+
+Available MCP tools:
+- `query_symbols` — search by pattern
+- `get_symbol` — lookup by name
+- `list_files` — list all indexed files
+- `get_file_info` — file details + symbols
+- `get_project_info` — project metadata
+- `semantic_search` — vector-based search (requires `--embed`)

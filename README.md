@@ -19,6 +19,9 @@ Inspired by [OpenWiki](https://github.com/langchain-ai/openwiki).
 - **Incremental updates** — `--update` refreshes only what changed
 - **AGENTS.md integration** — appends a reference block so coding agents know where the docs live
 - **Heuristic scan mode** — `--scan` generates instant, zero-LLM documentation by parsing source code directly
+- **Code indexing** — `--index` builds structured JSON index of all symbols and files
+- **Semantic search** — `--embed` + `-s` for vector-based semantic search
+- **MCP server** — `--serve` exposes your codebase as an MCP tool for AI agents
 - **GitHub Actions ready** — one-shot `-p` mode works in CI
 
 ## Install
@@ -64,6 +67,11 @@ Options:
       --init     Configure provider, API key, and model
   -p, --print    Non-interactive one-shot mode
       --scan     Heuristic scan (no LLM) — instant, deterministic
+      --index    Build structured JSON index of all symbols and files
+      --embed    Generate embeddings for semantic search
+  -q, --query    Query the index for symbols or files matching a pattern
+  -s, --semantic Semantic search query (requires embeddings)
+      --serve    Start MCP server (JSON-RPC 2.0 over stdio)
       --update   Refresh existing wakawiki/ docs
       --version  Print version
   -h, --help     Show help
