@@ -6,7 +6,7 @@ A CLI that writes and maintains agent documentation for your codebase. Uses LLMs
 
 - [What is WakaWiki?](https://wakawiki.dev/guide/getting-started): Overview and how it works
 - [Installation](https://wakawiki.dev/guide/installation): Cargo, npm, or build from source
-- [Commands](https://wakawiki.dev/guide/usage): CLI reference including --scan, --update, -p, --version
+- [Commands](https://wakawiki.dev/guide/usage): CLI reference including --scan, --update, --index, --embed, -q, -s, --serve, -p, --version
 - [Providers](https://wakawiki.dev/guide/providers): OpenAI, Anthropic, DeepSeek, OpenRouter, opencode
 - [Configuration](https://wakawiki.dev/guide/configuration): Settings via ~/.wakawiki/.env
 - [GitHub Actions](https://wakawiki.dev/guide/ci): CI workflow for auto-updating docs
