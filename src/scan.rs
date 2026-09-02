@@ -49,14 +49,14 @@ pub fn run(project_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let dir_tree = build_dir_tree(&files);
 
     let index_md = generate_index(&name, &version, &description, &deps, &dir_tree);
-    let index_path = output::write_doc(&wakawiki_dir, "index.md", &index_md);
+    let index_path = output::write_doc(&wakawiki_dir, "index.md", &index_md)?;
     if let Ok(hash) = scanner::compute_file_hash(&index_path) {
         wiki_meta.file_hashes.insert("index.md".into(), hash);
     }
     println!("  -> write_doc: index.md ({} bytes)", index_md.len());
 
     let api_md = generate_api(&modules);
-    let api_path = output::write_doc(&wakawiki_dir, "architecture.md", &api_md);
+    let api_path = output::write_doc(&wakawiki_dir, "architecture.md", &api_md)?;
     if let Ok(hash) = scanner::compute_file_hash(&api_path) {
         wiki_meta.file_hashes.insert("architecture.md".into(), hash);
     }

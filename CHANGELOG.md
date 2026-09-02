@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2026-09-03
+
+### Security
+- Path traversal protection: new `safe_join()` helper rejects `..` components in `list_files`, `read_file`, and `write_doc` tool arguments
+- `.env` config file written with `0600` permissions on Unix (was default `0644`)
+
+### Added
+- Agent loop iteration cap (default 100 turns) to prevent runaway API costs from models that never finish
+- HTTP retry with exponential backoff (3 attempts, 500ms/1s/2s) on 429 and 5xx responses from LLM providers
+- Malformed JSON tool arguments now surface a clear error to the LLM instead of silently defaulting to empty
+- `provider::create` unit tests covering all dispatch paths
+- `CONTRIBUTING.md` with development workflow, commit style, and project structure
+
+### Changed
+- `compute_file_hash` documented as non-cryptographic (SipHash, change-detection only)
+- `output::write_doc` now returns `Result<PathBuf, String>` for path traversal rejection
+- Test suite expanded from 71 to 79 tests
+
 ## [0.1.8] - 2026-09-01
 
 ### Added

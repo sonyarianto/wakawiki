@@ -72,15 +72,15 @@ impl AnthropicProvider {
             body["tools"] = serde_json::json!(api_tools);
         }
 
-        let resp = self
-            .client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await?;
+        let resp = super::retry_request(&self.client, || {
+            self.client
+                .post("https://api.anthropic.com/v1/messages")
+                .header("x-api-key", &self.api_key)
+                .header("anthropic-version", "2023-06-01")
+                .header("Content-Type", "application/json")
+                .json(&body)
+        })
+        .await?;
 
         let status = resp.status();
         let body_text = resp.text().await?;

@@ -1,6 +1,6 @@
 [package]
 name = "wakawiki"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 description = "A CLI that writes and maintains agent documentation for your codebase"
 license = "MIT"

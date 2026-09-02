@@ -119,6 +119,13 @@ pub fn init_config() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     std::fs::write(env_path(), env_content)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(env_path(), std::fs::Permissions::from_mode(0o600));
+    }
+
     println!("Config saved to {}", env_path().display());
     Ok(())
 }

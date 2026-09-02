@@ -81,14 +81,14 @@ impl OpenAiProvider {
             body["tool_choice"] = serde_json::json!("auto");
         }
 
-        let resp = self
-            .client
-            .post(format!("{}/chat/completions", self.base_url))
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await?;
+        let resp = super::retry_request(&self.client, || {
+            self.client
+                .post(format!("{}/chat/completions", self.base_url))
+                .header("Authorization", format!("Bearer {}", self.api_key))
+                .header("Content-Type", "application/json")
+                .json(&body)
+        })
+        .await?;
 
         let status = resp.status();
         let body_text = resp.text().await?;

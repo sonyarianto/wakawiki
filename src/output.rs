@@ -3,6 +3,29 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+/// Safely join a relative path onto a base directory.
+/// Returns `Err` if the resulting path escapes the base directory.
+pub fn safe_join(base: &Path, relative: &str) -> Result<PathBuf, String> {
+    let relative = relative.trim_start_matches('/');
+    if relative.contains("..") {
+        return Err(format!(
+            "Path traversal rejected: '{relative}' contains '..' component"
+        ));
+    }
+    let joined = base.join(relative);
+    let canonical_base =
+        std::fs::canonicalize(base).map_err(|e| format!("Cannot resolve base path: {e}"))?;
+    let canonical_joined =
+        std::fs::canonicalize(&joined).unwrap_or_else(|_| canonical_base.join(relative));
+    if !canonical_joined.starts_with(&canonical_base) {
+        return Err(format!(
+            "Path traversal rejected: '{}' escapes base directory",
+            joined.display()
+        ));
+    }
+    Ok(joined)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WikiMeta {
     pub file_hashes: HashMap<String, String>,
@@ -30,13 +53,17 @@ pub fn save_wiki_meta(wakawiki_dir: &Path, meta: &WikiMeta) {
     }
 }
 
-pub fn write_doc(wakawiki_dir: &Path, relative_path: &str, content: &str) -> PathBuf {
-    let full_path = wakawiki_dir.join(relative_path);
+pub fn write_doc(
+    wakawiki_dir: &Path,
+    relative_path: &str,
+    content: &str,
+) -> Result<PathBuf, String> {
+    let full_path = safe_join(wakawiki_dir, relative_path)?;
     if let Some(parent) = full_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
     let _ = std::fs::write(&full_path, content);
-    full_path
+    Ok(full_path)
 }
 
 pub fn append_agents_reference(project_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -93,7 +120,7 @@ mod tests {
     #[test]
     fn write_doc_creates_file() {
         let (dir, cleanup) = temp_dir();
-        let path = write_doc(&dir, "index.md", "# Hello");
+        let path = write_doc(&dir, "index.md", "# Hello").unwrap();
         assert!(path.exists());
         let content = std::fs::read_to_string(&path).unwrap();
         assert_eq!(content, "# Hello");
@@ -103,9 +130,35 @@ mod tests {
     #[test]
     fn write_doc_creates_parent_dirs() {
         let (dir, cleanup) = temp_dir();
-        let path = write_doc(&dir, "sub/deep/file.md", "content");
+        let path = write_doc(&dir, "sub/deep/file.md", "content").unwrap();
         assert!(path.exists());
         assert!(path.to_string_lossy().contains("sub/deep"));
+        cleanup();
+    }
+
+    #[test]
+    fn write_doc_rejects_path_traversal() {
+        let (dir, cleanup) = temp_dir();
+        let result = write_doc(&dir, "../../etc/passwd", "evil");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("traversal"));
+        cleanup();
+    }
+
+    #[test]
+    fn safe_join_allows_valid_paths() {
+        let (dir, cleanup) = temp_dir();
+        let result = safe_join(&dir, "src/main.rs");
+        assert!(result.is_ok());
+        assert!(result.unwrap().starts_with(&dir));
+        cleanup();
+    }
+
+    #[test]
+    fn safe_join_rejects_traversal() {
+        let (dir, cleanup) = temp_dir();
+        assert!(safe_join(&dir, "../../etc/passwd").is_err());
+        assert!(safe_join(&dir, "foo/../../etc/passwd").is_err());
         cleanup();
     }
 

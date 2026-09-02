@@ -93,6 +93,11 @@ pub fn search_codebase(
     Ok(results)
 }
 
+/// Compute a fast, non-cryptographic hash of a file's contents using `DefaultHasher` (SipHash).
+///
+/// **Not for security purposes** — this is only used for change detection to skip
+/// re-generating documentation for unchanged files. Do not use for integrity
+/// verification, password hashing, or any security-sensitive application.
 pub fn compute_file_hash(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
     use std::io::Read;
     let mut file = std::fs::File::open(path)?;

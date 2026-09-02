@@ -5,10 +5,12 @@ use std::time::Duration;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::config::Config;
-use crate::output::{self, WikiMeta};
+use crate::output::{self, safe_join, WikiMeta};
 use crate::prompts;
 use crate::provider::{ChatMessage, ChatResponse, LlmProvider, ToolCall, ToolDef};
 use crate::scanner;
+
+const DEFAULT_MAX_TURNS: usize = 100;
 
 fn tool_definitions() -> Vec<ToolDef> {
     vec![
@@ -75,6 +77,11 @@ fn tool_definitions() -> Vec<ToolDef> {
     ]
 }
 
+fn parse_tool_args(tool: &ToolCall) -> Result<HashMap<String, String>, String> {
+    serde_json::from_str(&tool.arguments)
+        .map_err(|e| format!("Invalid tool arguments JSON: {e} — raw: {}", tool.arguments))
+}
+
 fn execute_tool(
     tool: &ToolCall,
     project_dir: &Path,
@@ -83,13 +90,18 @@ fn execute_tool(
 ) -> String {
     match tool.name.as_str() {
         "list_files" => {
-            let args: HashMap<String, String> =
-                serde_json::from_str(&tool.arguments).unwrap_or_default();
+            let args = match parse_tool_args(tool) {
+                Ok(a) => a,
+                Err(e) => return e,
+            };
             let subpath = args.get("path").map(|s| s.as_str()).unwrap_or("");
             let dir_to_list = if subpath.is_empty() {
                 project_dir.to_path_buf()
             } else {
-                project_dir.join(subpath.trim_start_matches('/'))
+                match safe_join(project_dir, subpath) {
+                    Ok(p) => p,
+                    Err(e) => return e,
+                }
             };
 
             if !dir_to_list.exists() {
@@ -117,15 +129,20 @@ fn execute_tool(
             }
         }
         "read_file" => {
-            let args: HashMap<String, String> =
-                serde_json::from_str(&tool.arguments).unwrap_or_default();
+            let args = match parse_tool_args(tool) {
+                Ok(a) => a,
+                Err(e) => return e,
+            };
             let filepath = args.get("path").map(|s| s.as_str()).unwrap_or("");
 
             if filepath.is_empty() {
                 return "Error: no path provided".into();
             }
 
-            let full_path = project_dir.join(filepath.trim_start_matches('/'));
+            let full_path = match safe_join(project_dir, filepath) {
+                Ok(p) => p,
+                Err(e) => return e,
+            };
             match scanner::read_file(&full_path) {
                 Ok(content) => {
                     let line_count = content.lines().count();
@@ -148,8 +165,10 @@ fn execute_tool(
             }
         }
         "search" => {
-            let args: HashMap<String, String> =
-                serde_json::from_str(&tool.arguments).unwrap_or_default();
+            let args = match parse_tool_args(tool) {
+                Ok(a) => a,
+                Err(e) => return e,
+            };
             let pattern = args.get("pattern").map(|s| s.as_str()).unwrap_or("");
 
             if pattern.is_empty() {
@@ -172,8 +191,10 @@ fn execute_tool(
             }
         }
         "write_doc" => {
-            let args: HashMap<String, String> =
-                serde_json::from_str(&tool.arguments).unwrap_or_default();
+            let args = match parse_tool_args(tool) {
+                Ok(a) => a,
+                Err(e) => return e,
+            };
             let path = args.get("path").map(|s| s.as_str()).unwrap_or("");
             let content = args.get("content").map(|s| s.as_str()).unwrap_or("");
 
@@ -181,7 +202,10 @@ fn execute_tool(
                 return "Error: no path provided".into();
             }
 
-            let full_path = output::write_doc(wakawiki_dir, path, content);
+            let full_path = match output::write_doc(wakawiki_dir, path, content) {
+                Ok(p) => p,
+                Err(e) => return e,
+            };
             if let Ok(hash) = scanner::compute_file_hash(&full_path) {
                 wiki_meta.file_hashes.insert(path.to_string(), hash);
             }
@@ -242,8 +266,17 @@ pub async fn run_interactive(
     ];
 
     let mut is_first = true;
+    let mut turns = 0;
 
     loop {
+        turns += 1;
+        if turns > DEFAULT_MAX_TURNS {
+            eprintln!(
+                "Warning: reached maximum iteration cap ({DEFAULT_MAX_TURNS}). Stopping to prevent runaway API costs."
+            );
+            break;
+        }
+
         let msg = if is_first {
             "Generating documentation..."
         } else {
@@ -355,8 +388,17 @@ pub async fn run_oneshot(
 
     let mut is_first = true;
     let mut final_output = String::new();
+    let mut turns = 0;
 
     loop {
+        turns += 1;
+        if turns > DEFAULT_MAX_TURNS {
+            eprintln!(
+                "Warning: reached maximum iteration cap ({DEFAULT_MAX_TURNS}). Stopping to prevent runaway API costs."
+            );
+            break;
+        }
+
         let msg = if is_first {
             "Generating documentation..."
         } else {
@@ -419,8 +461,17 @@ pub async fn update_docs(
     ];
 
     let mut is_first = true;
+    let mut turns = 0;
 
     loop {
+        turns += 1;
+        if turns > DEFAULT_MAX_TURNS {
+            eprintln!(
+                "Warning: reached maximum iteration cap ({DEFAULT_MAX_TURNS}). Stopping to prevent runaway API costs."
+            );
+            break;
+        }
+
         let msg = if is_first {
             "Updating documentation..."
         } else {
@@ -540,6 +591,18 @@ mod tests {
     }
 
     #[test]
+    fn execute_list_files_rejects_path_traversal() {
+        let (proj, cleanup) = temp_project();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
+
+        let tc = make_tool_call("list_files", r#"{"path":"../../etc/passwd"}"#);
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
+        assert!(result.contains("traversal"));
+        cleanup();
+    }
+
+    #[test]
     fn execute_read_file_returns_content() {
         let (proj, cleanup) = temp_project();
         std::fs::write(proj.join("hello.txt"), "hello world\n").unwrap();
@@ -561,6 +624,18 @@ mod tests {
         let tc = make_tool_call("read_file", r#"{"path":""}"#);
         let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("Error"));
+        cleanup();
+    }
+
+    #[test]
+    fn execute_read_file_rejects_path_traversal() {
+        let (proj, cleanup) = temp_project();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
+
+        let tc = make_tool_call("read_file", r#"{"path":"../../etc/passwd"}"#);
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
+        assert!(result.contains("traversal"));
         cleanup();
     }
 
@@ -621,6 +696,21 @@ mod tests {
     }
 
     #[test]
+    fn execute_write_doc_rejects_path_traversal() {
+        let (proj, cleanup) = temp_project();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
+
+        let tc = make_tool_call(
+            "write_doc",
+            r##"{"path":"../../evil.sh","content":"malicious"}"##,
+        );
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
+        assert!(result.contains("traversal"));
+        cleanup();
+    }
+
+    #[test]
     fn execute_unknown_tool() {
         let (proj, cleanup) = temp_project();
         let wakawiki = proj.join("wakawiki");
@@ -629,6 +719,18 @@ mod tests {
         let tc = make_tool_call("nonexistent_tool", "{}");
         let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
         assert!(result.contains("Unknown tool"));
+        cleanup();
+    }
+
+    #[test]
+    fn execute_malformed_json_args_returns_error() {
+        let (proj, cleanup) = temp_project();
+        let wakawiki = proj.join("wakawiki");
+        std::fs::create_dir_all(&wakawiki).unwrap();
+
+        let tc = make_tool_call("list_files", "not valid json {{{");
+        let result = execute_tool(&tc, &proj, &wakawiki, &mut empty_meta());
+        assert!(result.contains("Invalid tool arguments JSON"));
         cleanup();
     }
 
