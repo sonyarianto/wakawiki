@@ -1,6 +1,6 @@
 [package]
 name = "wakawiki"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
 description = "A CLI that writes and maintains agent documentation for your codebase"
 license = "MIT"
@@ -22,3 +22,6 @@ dirs = "6"
 indicatif = "0.17"
 ignore = "0.4"
 dialoguer = "0.12"
+
+[dev-dependencies]
+wiremock = "0.6"

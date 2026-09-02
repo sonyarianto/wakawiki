@@ -37,7 +37,7 @@ features:
 ---
 
 <div style="text-align: center; margin-top: 2rem;">
-  <a href="https://github.com/sonyarianto/wakawiki/releases" style="display: inline-block; background: var(--vp-c-brand-1); color: #fff; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; font-weight: 600; text-decoration: none;">v0.1.9</a>
+  <a href="https://github.com/sonyarianto/wakawiki/releases" style="display: inline-block; background: var(--vp-c-brand-1); color: #fff; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; font-weight: 600; text-decoration: none;">v0.1.10</a>
 </div>
 
 <div style="text-align: center; margin-top: 1rem; opacity: 0.6; font-size: 0.875rem;">

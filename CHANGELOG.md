@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.10] - 2026-09-03
+
+### Fixed
+- `retry_request` guard ordering bug: `429 Too Many Requests` was incorrectly treated as non-retryable (matched `is_client_error()` early return); now correctly retries with backoff. Also added 3 `wiremock`-based tests covering 429→retry, 500→retry, and 400→no-retry
+
 ## [0.1.9] - 2026-09-03
 
 ### Security
