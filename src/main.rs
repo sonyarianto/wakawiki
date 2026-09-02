@@ -9,6 +9,7 @@ mod prompts;
 mod provider;
 mod scan;
 mod scanner;
+mod tools;
 mod vector;
 
 #[derive(Parser)]

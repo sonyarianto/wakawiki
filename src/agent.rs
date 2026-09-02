@@ -5,10 +5,11 @@ use std::time::Duration;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::config::Config;
-use crate::output::{self, safe_join, WikiMeta};
+use crate::output::{self, WikiMeta};
 use crate::prompts;
 use crate::provider::{ChatMessage, ChatResponse, LlmProvider, ToolCall, ToolDef};
 use crate::scanner;
+use crate::tools;
 
 const DEFAULT_MAX_TURNS: usize = 100;
 
@@ -95,38 +96,7 @@ fn execute_tool(
                 Err(e) => return e,
             };
             let subpath = args.get("path").map(|s| s.as_str()).unwrap_or("");
-            let dir_to_list = if subpath.is_empty() {
-                project_dir.to_path_buf()
-            } else {
-                match safe_join(project_dir, subpath) {
-                    Ok(p) => p,
-                    Err(e) => return e,
-                }
-            };
-
-            if !dir_to_list.exists() {
-                return format!("Error: path does not exist: {:?}", dir_to_list);
-            }
-
-            match scanner::scan_project(&dir_to_list) {
-                Ok(entries) => {
-                    if entries.is_empty() {
-                        format!("Directory is empty: {:?}", dir_to_list)
-                    } else {
-                        let mut lines: Vec<String> = Vec::new();
-                        for e in &entries {
-                            let kb = e.size / 1024;
-                            lines.push(format!(
-                                "{} ({} KB)",
-                                e.relative_path,
-                                if kb == 0 { 1 } else { kb }
-                            ));
-                        }
-                        lines.join("\n")
-                    }
-                }
-                Err(e) => format!("Error listing directory: {e}"),
-            }
+            tools::fs::list_files(project_dir, subpath)
         }
         "read_file" => {
             let args = match parse_tool_args(tool) {
@@ -134,35 +104,7 @@ fn execute_tool(
                 Err(e) => return e,
             };
             let filepath = args.get("path").map(|s| s.as_str()).unwrap_or("");
-
-            if filepath.is_empty() {
-                return "Error: no path provided".into();
-            }
-
-            let full_path = match safe_join(project_dir, filepath) {
-                Ok(p) => p,
-                Err(e) => return e,
-            };
-            match scanner::read_file(&full_path) {
-                Ok(content) => {
-                    let line_count = content.lines().count();
-                    if content.len() > 100_000 {
-                        format!(
-                            "File too large ({} lines, {} bytes). Here are the first 500 lines:\n\n{}",
-                            line_count,
-                            content.len(),
-                            content.lines().take(500).collect::<Vec<_>>().join("\n")
-                        )
-                    } else {
-                        format!(
-                            "File: {filepath} ({} lines, {} bytes)\n\n{content}",
-                            line_count,
-                            content.len()
-                        )
-                    }
-                }
-                Err(e) => format!("Error reading file: {e}"),
-            }
+            tools::fs::read_file(project_dir, filepath)
         }
         "search" => {
             let args = match parse_tool_args(tool) {
@@ -170,25 +112,7 @@ fn execute_tool(
                 Err(e) => return e,
             };
             let pattern = args.get("pattern").map(|s| s.as_str()).unwrap_or("");
-
-            if pattern.is_empty() {
-                return "Error: no pattern provided".into();
-            }
-
-            match scanner::search_codebase(project_dir, pattern) {
-                Ok(results) => {
-                    if results.is_empty() {
-                        format!("No matches found for '{pattern}'")
-                    } else {
-                        let mut output = String::new();
-                        for (file, line, text) in &results {
-                            output.push_str(&format!("{file}:{line}: {text}\n"));
-                        }
-                        output
-                    }
-                }
-                Err(e) => format!("Error searching: {e}"),
-            }
+            tools::fs::search(project_dir, pattern)
         }
         "write_doc" => {
             let args = match parse_tool_args(tool) {

@@ -5,7 +5,6 @@ const MAX_RETRIES: u32 = 3;
 const INITIAL_BACKOFF_MS: u64 = 500;
 
 pub async fn retry_request(
-    _client: &reqwest::Client,
     request_builder: impl Fn() -> reqwest::RequestBuilder,
 ) -> Result<reqwest::Response, Box<dyn std::error::Error>> {
     let mut last_err: Option<Box<dyn std::error::Error>> = None;
@@ -195,7 +194,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let result = retry_request(&client, || client.get(format!("{}/test", server.uri()))).await;
+        let result = retry_request(|| client.get(format!("{}/test", server.uri()))).await;
 
         assert!(
             result.is_ok(),
@@ -224,7 +223,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let result = retry_request(&client, || client.get(format!("{}/test", server.uri()))).await;
+        let result = retry_request(|| client.get(format!("{}/test", server.uri()))).await;
 
         assert!(result.is_ok(), "400 should return Ok without retry");
         assert_eq!(result.unwrap().status().as_u16(), 400);
@@ -255,7 +254,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let result = retry_request(&client, || client.get(format!("{}/test", server.uri()))).await;
+        let result = retry_request(|| client.get(format!("{}/test", server.uri()))).await;
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap().status().as_u16(), 200);

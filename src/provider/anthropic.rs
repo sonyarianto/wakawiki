@@ -72,7 +72,7 @@ impl AnthropicProvider {
             body["tools"] = serde_json::json!(api_tools);
         }
 
-        let resp = super::retry_request(&self.client, || {
+        let resp = super::retry_request(|| {
             self.client
                 .post("https://api.anthropic.com/v1/messages")
                 .header("x-api-key", &self.api_key)

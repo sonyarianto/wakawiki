@@ -3,27 +3,9 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-/// Safely join a relative path onto a base directory.
-/// Returns `Err` if the resulting path escapes the base directory.
+#[allow(dead_code)]
 pub fn safe_join(base: &Path, relative: &str) -> Result<PathBuf, String> {
-    let relative = relative.trim_start_matches('/');
-    if relative.contains("..") {
-        return Err(format!(
-            "Path traversal rejected: '{relative}' contains '..' component"
-        ));
-    }
-    let joined = base.join(relative);
-    let canonical_base =
-        std::fs::canonicalize(base).map_err(|e| format!("Cannot resolve base path: {e}"))?;
-    let canonical_joined =
-        std::fs::canonicalize(&joined).unwrap_or_else(|_| canonical_base.join(relative));
-    if !canonical_joined.starts_with(&canonical_base) {
-        return Err(format!(
-            "Path traversal rejected: '{}' escapes base directory",
-            joined.display()
-        ));
-    }
-    Ok(joined)
+    crate::tools::safe_join(base, relative)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,12 +40,7 @@ pub fn write_doc(
     relative_path: &str,
     content: &str,
 ) -> Result<PathBuf, String> {
-    let full_path = safe_join(wakawiki_dir, relative_path)?;
-    if let Some(parent) = full_path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::write(&full_path, content);
-    Ok(full_path)
+    crate::tools::fs::write_doc_file(wakawiki_dir, relative_path, content)
 }
 
 pub fn append_agents_reference(project_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {

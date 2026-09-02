@@ -3,7 +3,8 @@ use std::io::{self, BufRead, Write};
 use serde::{Deserialize, Serialize};
 
 use crate::index::{self, CodeIndex};
-use crate::vector::{self, VectorStore};
+use crate::tools;
+use crate::vector::VectorStore;
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
@@ -266,11 +267,11 @@ fn handle_tools_call(
                 .and_then(|a| a.get("pattern"))
                 .and_then(|p| p.as_str())
                 .unwrap_or("");
-            let query_result = index::query_index(index, pattern);
+            let text = tools::index::query_symbols(index, pattern);
             Ok(serde_json::json!({
                 "content": [{
                     "type": "text",
-                    "text": index::format_query_result(&query_result, pattern)
+                    "text": text
                 }]
             }))
         }
@@ -283,47 +284,20 @@ fn handle_tools_call(
                 .and_then(|a| a.get("file"))
                 .and_then(|f| f.as_str());
 
-            let symbols: Vec<_> = index
-                .symbols
-                .iter()
-                .filter(|s| s.name == name && file.map(|f| s.file == f).unwrap_or(true))
-                .collect();
-
-            if symbols.is_empty() {
-                Ok(serde_json::json!({
-                    "content": [{
-                        "type": "text",
-                        "text": format!("Symbol \"{name}\" not found")
-                    }],
-                    "isError": true
-                }))
-            } else {
-                let text = symbols
-                    .iter()
-                    .map(|s| {
-                        let doc = s
-                            .doc
-                            .as_ref()
-                            .map(|d| format!("\n{}", d))
-                            .unwrap_or_default();
-                        let sig = s
-                            .signature
-                            .as_ref()
-                            .map(|s| format!("\nSignature: {}", s))
-                            .unwrap_or_default();
-                        format!(
-                            "{} {} in {}:{}{}{}",
-                            s.kind, s.name, s.file, s.line, sig, doc
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n\n");
-                Ok(serde_json::json!({
+            match tools::index::get_symbol(index, name, file) {
+                Ok(text) => Ok(serde_json::json!({
                     "content": [{
                         "type": "text",
                         "text": text
                     }]
-                }))
+                })),
+                Err(e) => Ok(serde_json::json!({
+                    "content": [{
+                        "type": "text",
+                        "text": e
+                    }],
+                    "isError": true
+                })),
             }
         }
         Some("list_files") => {
@@ -331,25 +305,7 @@ fn handle_tools_call(
                 .and_then(|a| a.get("language"))
                 .and_then(|l| l.as_str());
 
-            let files: Vec<_> = index
-                .files
-                .iter()
-                .filter(|f| language.map(|l| f.language == l).unwrap_or(true))
-                .collect();
-
-            let text = files
-                .iter()
-                .map(|f| {
-                    let kb = f.size / 1024;
-                    format!(
-                        "{} [{}] ({} KB)",
-                        f.path,
-                        f.language,
-                        if kb == 0 { 1 } else { kb }
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
+            let text = tools::index::list_files_text(index, language);
 
             Ok(serde_json::json!({
                 "content": [{
@@ -364,51 +320,31 @@ fn handle_tools_call(
                 .and_then(|p| p.as_str())
                 .unwrap_or("");
 
-            let file = index.files.iter().find(|f| f.path == path);
-
-            match file {
-                Some(f) => {
-                    let symbols: Vec<_> = index.symbols.iter().filter(|s| s.file == path).collect();
-
-                    let mut text = format!(
-                        "File: {}\nLanguage: {}\nSize: {} bytes\nHash: {}",
-                        f.path, f.language, f.size, f.hash
-                    );
-
-                    if !symbols.is_empty() {
-                        text.push_str("\n\nSymbols:");
-                        for s in &symbols {
-                            text.push_str(&format!("\n  {} {} (line {})", s.kind, s.name, s.line));
-                        }
-                    }
-
-                    Ok(serde_json::json!({
-                        "content": [{
-                            "type": "text",
-                            "text": text
-                        }]
-                    }))
-                }
-                None => Ok(serde_json::json!({
+            match tools::index::get_file_info(index, path) {
+                Ok(text) => Ok(serde_json::json!({
                     "content": [{
                         "type": "text",
-                        "text": format!("File \"{path}\" not found in index")
+                        "text": text
+                    }]
+                })),
+                Err(e) => Ok(serde_json::json!({
+                    "content": [{
+                        "type": "text",
+                        "text": e
                     }],
                     "isError": true
                 })),
             }
         }
-        Some("get_project_info") => Ok(serde_json::json!({
-            "content": [{
-                "type": "text",
-                "text": format!("Project: {}\nVersion: {}\nDescription: {}\nFiles: {}\nSymbols: {}",
-                    index.project.name,
-                    index.project.version,
-                    index.project.description,
-                    index.files.len(),
-                    index.symbols.len())
-            }]
-        })),
+        Some("get_project_info") => {
+            let text = tools::index::get_project_info(index);
+            Ok(serde_json::json!({
+                "content": [{
+                    "type": "text",
+                    "text": text
+                }]
+            }))
+        }
         Some("semantic_search") => match vector_store {
             Some(store) => {
                 let query = arguments
@@ -420,8 +356,7 @@ fn handle_tools_call(
                     .and_then(|k| k.as_u64())
                     .unwrap_or(10) as usize;
 
-                let results = store.search(query, top_k);
-                let text = vector::format_semantic_results(&results);
+                let text = tools::index::semantic_search_text(store, query, top_k);
 
                 Ok(serde_json::json!({
                     "content": [{

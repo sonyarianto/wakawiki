@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.11] - 2026-09-03
+
+### Added
+- Shared `src/tools.rs` module: centralizes `safe_join` and filesystem/index tool execution for both `agent.rs` and `mcp.rs` — path-safety and formatting logic now in one place
+  - `tools::fs::{list_files, read_file, search, write_doc_file}` used by agent
+  - `tools::index::{query_symbols, get_symbol, list_files_text, get_file_info, get_project_info, semantic_search_text}` used by MCP server
+
+### Fixed
+- `retry_request` signature: removed unused `_client: &reqwest::Client` parameter (closure already captures client); callers now `retry_request(|| client.get(...))`
+
+### Changed
+- `src/output::write_doc` now delegates to `tools::fs::write_doc_file`
+- `src/output::safe_join` now delegates to `tools::safe_join` (kept as re-export for compatibility)
+- Test suite expanded from 82 to 87 tests
+
 ## [0.1.10] - 2026-09-03
 
 ### Fixed

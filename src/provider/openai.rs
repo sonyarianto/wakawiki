@@ -81,7 +81,7 @@ impl OpenAiProvider {
             body["tool_choice"] = serde_json::json!("auto");
         }
 
-        let resp = super::retry_request(&self.client, || {
+        let resp = super::retry_request(|| {
             self.client
                 .post(format!("{}/chat/completions", self.base_url))
                 .header("Authorization", format!("Bearer {}", self.api_key))
